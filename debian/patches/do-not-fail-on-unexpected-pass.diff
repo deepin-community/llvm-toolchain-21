@@ -1,0 +1,13 @@
+Index: llvm-toolchain-snapshot_21~++20250422102230+f541a3aad8e7/llvm/utils/lit/lit/Test.py
+===================================================================
+--- llvm-toolchain-snapshot_21~++20250422102230+f541a3aad8e7.orig/llvm/utils/lit/lit/Test.py
++++ llvm-toolchain-snapshot_21~++20250422102230+f541a3aad8e7/llvm/utils/lit/lit/Test.py
+@@ -52,7 +52,7 @@ XFAIL = ResultCode("XFAIL", "Expectedly
+ UNRESOLVED = ResultCode("UNRESOLVED", "Unresolved", True)
+ TIMEOUT = ResultCode("TIMEOUT", "Timed Out", True)
+ FAIL = ResultCode("FAIL", "Failed", True)
+-XPASS = ResultCode("XPASS", "Unexpectedly Passed", True)
++XPASS       = ResultCode('XPASS',       'Unexpectedly Passed', False)
+ 
+ 
+ # Test metric values.

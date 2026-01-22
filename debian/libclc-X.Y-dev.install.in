@@ -1,0 +1,2 @@
+usr/lib/pkgconfig/libclc.pc
+libclc/check_external_calls.sh @LLVM_DIR@/share/libclc

@@ -1,0 +1,148 @@
+From 4d1f2492d26f8c2fad0eee2a141c7e0bbbc4c868 Mon Sep 17 00:00:00 2001
+From: David Green <david.green@arm.com>
+Date: Wed, 12 Nov 2025 16:26:21 +0000
+Subject: [PATCH] [ARM] Use TargetMachine over Subtarget in ARMAsmPrinter
+ (#166329)
+
+The subtarget may not be set if no functions are present in the module.
+Attempt to use the TargetMachine directly in more cases.
+
+Fixes #165422
+Fixes #167577
+---
+ llvm/lib/Target/ARM/ARMAsmPrinter.cpp     | 21 +++++++++++----------
+ llvm/lib/Target/ARM/ARMSubtarget.cpp      | 12 +-----------
+ llvm/lib/Target/ARM/ARMTargetMachine.h    | 14 ++++++++++++++
+ llvm/test/CodeGen/ARM/xxstructor-nodef.ll |  7 +++++++
+ 4 files changed, 33 insertions(+), 21 deletions(-)
+ create mode 100644 llvm/test/CodeGen/ARM/xxstructor-nodef.ll
+
+diff --git a/llvm/lib/Target/ARM/ARMAsmPrinter.cpp b/llvm/lib/Target/ARM/ARMAsmPrinter.cpp
+index 36b99087e0a32..2d2e62c80c702 100644
+--- a/llvm/lib/Target/ARM/ARMAsmPrinter.cpp
++++ b/llvm/lib/Target/ARM/ARMAsmPrinter.cpp
+@@ -97,7 +97,8 @@ void ARMAsmPrinter::emitXXStructor(const DataLayout &DL, const Constant *CV) {
+ 
+   const MCExpr *E = MCSymbolRefExpr::create(
+       GetARMGVSymbol(GV, ARMII::MO_NO_FLAG),
+-      (Subtarget->isTargetELF() ? ARM::S_TARGET1 : ARM::S_None), OutContext);
++      (TM.getTargetTriple().isOSBinFormatELF() ? ARM::S_TARGET1 : ARM::S_None),
++      OutContext);
+ 
+   OutStreamer->emitValue(E, Size);
+ }
+@@ -595,8 +596,7 @@ void ARMAsmPrinter::emitEndOfAsmFile(Module &M) {
+   ARMTargetStreamer &ATS = static_cast<ARMTargetStreamer &>(TS);
+ 
+   if (OptimizationGoals > 0 &&
+-      (Subtarget->isTargetAEABI() || Subtarget->isTargetGNUAEABI() ||
+-       Subtarget->isTargetMuslAEABI()))
++      (TT.isTargetAEABI() || TT.isTargetGNUAEABI() || TT.isTargetMuslAEABI()))
+     ATS.emitAttribute(ARMBuildAttrs::ABI_optimization_goals, OptimizationGoals);
+   OptimizationGoals = -1;
+ 
+@@ -884,9 +884,10 @@ static uint8_t getModifierSpecifier(ARMCP::ARMCPModifier Modifier) {
+ 
+ MCSymbol *ARMAsmPrinter::GetARMGVSymbol(const GlobalValue *GV,
+                                         unsigned char TargetFlags) {
+-  if (Subtarget->isTargetMachO()) {
++  const Triple &TT = TM.getTargetTriple();
++  if (TT.isOSBinFormatMachO()) {
+     bool IsIndirect =
+-        (TargetFlags & ARMII::MO_NONLAZY) && Subtarget->isGVIndirectSymbol(GV);
++        (TargetFlags & ARMII::MO_NONLAZY) && getTM().isGVIndirectSymbol(GV);
+ 
+     if (!IsIndirect)
+       return getSymbol(GV);
+@@ -903,9 +904,8 @@ MCSymbol *ARMAsmPrinter::GetARMGVSymbol(const GlobalValue *GV,
+       StubSym = MachineModuleInfoImpl::StubValueTy(getSymbol(GV),
+                                                    !GV->hasInternalLinkage());
+     return MCSym;
+-  } else if (Subtarget->isTargetCOFF()) {
+-    assert(Subtarget->isTargetWindows() &&
+-           "Windows is the only supported COFF target");
++  } else if (TT.isOSBinFormatCOFF()) {
++    assert(TT.isOSWindows() && "Windows is the only supported COFF target");
+ 
+     bool IsIndirect =
+         (TargetFlags & (ARMII::MO_DLLIMPORT | ARMII::MO_COFFSTUB));
+@@ -932,7 +932,7 @@ MCSymbol *ARMAsmPrinter::GetARMGVSymbol(const GlobalValue *GV,
+     }
+ 
+     return MCSym;
+-  } else if (Subtarget->isTargetELF()) {
++  } else if (TT.isOSBinFormatELF()) {
+     return getSymbolPreferLocal(*GV);
+   }
+   llvm_unreachable("unexpected target");
+@@ -978,7 +978,8 @@ void ARMAsmPrinter::emitMachineConstantPoolValue(
+ 
+     // On Darwin, const-pool entries may get the "FOO$non_lazy_ptr" mangling, so
+     // flag the global as MO_NONLAZY.
+-    unsigned char TF = Subtarget->isTargetMachO() ? ARMII::MO_NONLAZY : 0;
++    unsigned char TF =
++        TM.getTargetTriple().isOSBinFormatMachO() ? ARMII::MO_NONLAZY : 0;
+     MCSym = GetARMGVSymbol(GV, TF);
+   } else if (ACPV->isMachineBasicBlock()) {
+     const MachineBasicBlock *MBB = cast<ARMConstantPoolMBB>(ACPV)->getMBB();
+diff --git a/llvm/lib/Target/ARM/ARMSubtarget.cpp b/llvm/lib/Target/ARM/ARMSubtarget.cpp
+index 58bc338b25856..7ec232ae9bac5 100644
+--- a/llvm/lib/Target/ARM/ARMSubtarget.cpp
++++ b/llvm/lib/Target/ARM/ARMSubtarget.cpp
+@@ -318,17 +318,7 @@ bool ARMSubtarget::isRWPI() const {
+ }
+ 
+ bool ARMSubtarget::isGVIndirectSymbol(const GlobalValue *GV) const {
+-  if (!TM.shouldAssumeDSOLocal(GV))
+-    return true;
+-
+-  // 32 bit macho has no relocation for a-b if a is undefined, even if b is in
+-  // the section that is being relocated. This means we have to use o load even
+-  // for GVs that are known to be local to the dso.
+-  if (isTargetMachO() && TM.isPositionIndependent() &&
+-      (GV->isDeclarationForLinker() || GV->hasCommonLinkage()))
+-    return true;
+-
+-  return false;
++  return TM.isGVIndirectSymbol(GV);
+ }
+ 
+ bool ARMSubtarget::isGVInGOT(const GlobalValue *GV) const {
+diff --git a/llvm/lib/Target/ARM/ARMTargetMachine.h b/llvm/lib/Target/ARM/ARMTargetMachine.h
+index c417c4c8bae65..1f74e9fdd1dc9 100644
+--- a/llvm/lib/Target/ARM/ARMTargetMachine.h
++++ b/llvm/lib/Target/ARM/ARMTargetMachine.h
+@@ -98,6 +98,20 @@ class ARMBaseTargetMachine : public CodeGenTargetMachineImpl {
+     return true;
+   }
+ 
++  bool isGVIndirectSymbol(const GlobalValue *GV) const {
++    if (!shouldAssumeDSOLocal(GV))
++      return true;
++
++    // 32 bit macho has no relocation for a-b if a is undefined, even if b is in
++    // the section that is being relocated. This means we have to use o load
++    // even for GVs that are known to be local to the dso.
++    if (getTargetTriple().isOSBinFormatMachO() && isPositionIndependent() &&
++        (GV->isDeclarationForLinker() || GV->hasCommonLinkage()))
++      return true;
++
++    return false;
++  }
++
+   yaml::MachineFunctionInfo *createDefaultFuncInfoYAML() const override;
+   yaml::MachineFunctionInfo *
+   convertFuncInfoToYAML(const MachineFunction &MF) const override;
+diff --git a/llvm/test/CodeGen/ARM/xxstructor-nodef.ll b/llvm/test/CodeGen/ARM/xxstructor-nodef.ll
+new file mode 100644
+index 0000000000000..db17b2b1c21ab
+--- /dev/null
++++ b/llvm/test/CodeGen/ARM/xxstructor-nodef.ll
+@@ -0,0 +1,7 @@
++; RUN: llc -mtriple=arm-unknown-linux-gnueabihf < %s | FileCheck %s
++
++; This test contains a llvm.global_ctors with no other definitions. Make sure we do not crash in that case.
++; CHECK: .section        .init_array,"aw",%init_array
++
++declare  ccc void @ghczmbignum_GHCziNumziBackendziSelected_init__prof_init()
++@llvm.global_ctors = appending global [1 x {i32, void ()*, i8* }] [{i32, void ()*, i8* }{i32  65535, void ()*  @ghczmbignum_GHCziNumziBackendziSelected_init__prof_init, i8*  null } ]

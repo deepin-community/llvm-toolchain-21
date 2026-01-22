@@ -1,0 +1,6 @@
+#!/usr/bin/dh-exec
+
+@LLVM_LIBDIR@/libLLVMOffload.so.@LLVM_VERSION@.1
+
+# OFFLOAD_ARCHS + mips64el, but why?
+[@OFFLOAD_ARCHS@ mips64el] @LLVM_LIBDIR@/libomptarget*.so.@LLVM_VERSION@.@LLVM_VERSION_MINOR@

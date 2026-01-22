@@ -1,0 +1,52 @@
+From 47211c4b96e99a3344a71570a99b991c5f5c1c01 Mon Sep 17 00:00:00 2001
+From: Brad Smith <brad@comstyle.com>
+Date: Mon, 22 Sep 2025 08:01:00 -0400
+Subject: [PATCH] [Driver] Enable __float128 support on X86 on Hurd (#160045)
+
+---
+ clang/lib/Basic/Targets/OSTargets.h             | 14 +++++++++++++-
+ clang/test/CodeGenCXX/float128-declarations.cpp |  4 ++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/clang/lib/Basic/Targets/OSTargets.h b/clang/lib/Basic/Targets/OSTargets.h
+index a733f6e97b3a4..6c49a09ab27f5 100644
+--- a/clang/lib/Basic/Targets/OSTargets.h
++++ b/clang/lib/Basic/Targets/OSTargets.h
+@@ -328,9 +328,21 @@ class LLVM_LIBRARY_VISIBILITY HurdTargetInfo : public OSTargetInfo<Target> {
+       Builder.defineMacro("_REENTRANT");
+     if (Opts.CPlusPlus)
+       Builder.defineMacro("_GNU_SOURCE");
++    if (this->HasFloat128)
++      Builder.defineMacro("__FLOAT128__");
+   }
+ public:
+-  using OSTargetInfo<Target>::OSTargetInfo;
++  HurdTargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
++      : OSTargetInfo<Target>(Triple, Opts) {
++    switch (Triple.getArch()) {
++    default:
++      break;
++    case llvm::Triple::x86:
++    case llvm::Triple::x86_64:
++      this->HasFloat128 = true;
++      break;
++    }
++  }
+ };
+ 
+ // Linux target
+diff --git a/clang/test/CodeGenCXX/float128-declarations.cpp b/clang/test/CodeGenCXX/float128-declarations.cpp
+index 84b8f7f33036b..0f2e82bbfcd43 100644
+--- a/clang/test/CodeGenCXX/float128-declarations.cpp
++++ b/clang/test/CodeGenCXX/float128-declarations.cpp
+@@ -6,6 +6,10 @@
+ // RUN:   %s -o - | FileCheck %s -check-prefix=CHECK-X86
+ // RUN: %clang_cc1 -emit-llvm -triple x86_64-unknown-linux-gnu -std=c++11 \
+ // RUN:   %s -o - | FileCheck %s -check-prefix=CHECK-X86
++// RUN: %clang_cc1 -emit-llvm -triple i386-unknown-hurd-gnu -std=c++11 \
++// RUN:   %s -o - | FileCheck %s -check-prefix=CHECK-X86
++// RUN: %clang_cc1 -emit-llvm -triple x86_64-unknown-hurd-gnu -std=c++11 \
++// RUN:   %s -o - | FileCheck %s -check-prefix=CHECK-X86
+ // RUN: %clang_cc1 -emit-llvm -triple i386-unknown-freebsd -std=c++11 \
+ // RUN:   %s -o - | FileCheck %s -check-prefix=CHECK-X86
+ // RUN: %clang_cc1 -emit-llvm -triple amd64-unknown-freebsd -std=c++11 \

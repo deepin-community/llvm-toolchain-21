@@ -1,0 +1,3 @@
+@LLVM_LIBDIR@/liblldb-@LLVM_VERSION@.so.1 /usr/lib/@DEB_HOST_MULTIARCH@/
+
+@LLVM_LIBDIR@/liblldbIntelFeatures.so.*
