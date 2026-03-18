@@ -1,3 +1,9 @@
+llvm-toolchain-21 (1:21.1.8-2deepin1) unstable; urgency=medium
+
+  * enable rva23 patch
+
+ -- Chang Yang <yangchang@deepin.org>  Wed, 18 Mar 2026 10:05:06 +0800
+
 llvm-toolchain-21 (1:21.1.8-2) unstable; urgency=medium
 
   * Stop building multilibs on s390x. Closes: #1125253.

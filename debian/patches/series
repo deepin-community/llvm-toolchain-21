@@ -140,4 +140,4 @@ ubuntu-resolute.patch
 fix-crash-ghc-arm.patch
 
 # only apply this patch for Ubuntu 25.10 or newer
-#ubuntu-clang-use-RVA23U64-profile.patch
+ubuntu-clang-use-RVA23U64-profile.patch
