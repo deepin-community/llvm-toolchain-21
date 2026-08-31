@@ -1,4 +1,4 @@
-llvm-toolchain-21 (1:21.1.8-2deepin24) unstable; urgency=medium
+llvm-toolchain-21 (1:21.1.8-2deepin4) unstable; urgency=medium
 
   * Add sw64 (Sunway SW64) architecture support to llvm-toolchain-21
     - Port the SW64 backend from llvm-toolchain-17: llvm/lib/Target/Sw64/
@@ -25,7 +25,6 @@ llvm-toolchain-21 (1:21.1.8-2deepin24) unstable; urgency=medium
       match the sw64 host arch and would keep those lines, failing
       dh_install).
 
- repo: llvm-toolchain-21 #add-sw64-support
  -- lichenggang <lichenggang@uniontech.com>  Mon, 31 Aug 2026 11:00:00 +0800
 
 llvm-toolchain-21 (1:21.1.8-2deepin3) unstable; urgency=medium
