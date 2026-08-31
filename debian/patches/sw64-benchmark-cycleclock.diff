@@ -1,0 +1,16 @@
+Description: Support cycle clock fallback on sw64
+Author: lichenggang <lichenggang@uniontech.com>
+Forwarded: not-needed
+
+The bundled Google Benchmark cycle clock has no sw64 implementation and
+otherwise stops compilation with its unsupported-platform #error.  Use the
+portable wall-clock fallback, as for mips and loongarch, on sw64.
+
+--- a/third-party/benchmark/src/cycleclock.h
++++ b/third-party/benchmark/src/cycleclock.h
+@@ -177,4 +177,4 @@
+-#elif defined(__loongarch__) || defined(__csky__)
++#elif defined(__loongarch__) || defined(__csky__) || defined(__sw_64__)
+   struct timeval tv;
+   gettimeofday(&tv, nullptr);
+   return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;

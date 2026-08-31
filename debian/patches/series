@@ -138,6 +138,7 @@ revert-issue-139220.diff
 unbreak-arhmf.patch
 ubuntu-resolute.patch
 fix-crash-ghc-arm.patch
+sw64-benchmark-cycleclock.diff
 
 # only apply this patch for Ubuntu 25.10 or newer
 #ubuntu-clang-use-RVA23U64-profile.patch

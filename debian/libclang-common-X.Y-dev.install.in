@@ -2,8 +2,8 @@
 
 @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/*.h
 @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/module.modulemap
-[!hurd-any] @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/xray/
-[!hurd-any] @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/profile/
+[!sw64] @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/xray/
+[!sw64] @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/profile/
 @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/ppc_wrappers/
 @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/openmp_wrappers/
 @LLVM_LIBDIR@/clang/@LLVM_VERSION@*/include/cuda_wrappers/

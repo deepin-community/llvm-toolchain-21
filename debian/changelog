@@ -1,3 +1,33 @@
+llvm-toolchain-21 (1:21.1.8-2deepin24) unstable; urgency=medium
+
+  * Add sw64 (Sunway SW64) architecture support to llvm-toolchain-21
+    - Port the SW64 backend from llvm-toolchain-17: llvm/lib/Target/Sw64/
+      (AsmParser, Disassembler, InstPrinter, MCTargetDesc, ISel,
+      ISelLowering, InstrInfo, RegisterInfo, FrameLowering, Subtarget,
+      TargetMachine), clang TargetInfo/CodeGen/Driver support, sw64
+      relocations/intrinsics/triples/builtins, and cmake support, applied
+      via debian/patches/0001-feat-add-sw64-support.patch.
+    - Arch-specific quilt machinery (debian/patches/series.sw64,
+      debian/rules.d/qulit.mk, debian/quiltrc) so the sw64 patch only
+      applies on sw64.
+    - debian/control.in.sw64 uses literal "Architecture: any" (linux-any
+      for libfuzzer) so the sw64 build produces real sw64 binary packages
+      (clang-21, llvm-21, libllvm21, libclang1-21, clangd-21, libc++1,
+      libc++abi1, ...), matching llvm-toolchain-17.
+    - debian/rules sw64 blocks: PROJECTS/RUNTIMES selection, -latomic at
+      link time, -Wl,--no-relax -fPIC, external assembler
+      (-fno-integrated-as), Z3 and Polly disabled, RUN_TEST=no, docs.
+    - Fix LLVM 21 regressions in the port: ISD::VAARG 4-operand layout
+      (LowerVAARG), missing sw_64 cases in addMCModel/getLDMOption,
+      stale llvm/MC/MCAsmLayout.h includes, benchmark cycleclock fallback.
+    - Filter the xray/ and profile/ clang resource dirs with a single
+      [!sw64] atom (dh-exec comma lists are single wildcards that cannot
+      match the sw64 host arch and would keep those lines, failing
+      dh_install).
+
+ repo: llvm-toolchain-21 #add-sw64-support
+ -- lichenggang <lichenggang@uniontech.com>  Mon, 31 Aug 2026 11:00:00 +0800
+
 llvm-toolchain-21 (1:21.1.8-2deepin3) unstable; urgency=medium
 
   * Disable auto-vectorization on loong64 to fix GCC 12 ICE
@@ -8437,3 +8467,4 @@ llvm-toolchain-3.2 (3.2repack-1~exp1) experimental; urgency=low
     Thanks to Matthias Klose.
 
  -- Sylvestre Ledru <sylvestre@debian.org>  Sat, 09 Feb 2013 12:14:10 +0100
+

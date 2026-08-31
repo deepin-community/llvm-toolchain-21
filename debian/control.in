@@ -8,6 +8,7 @@ Uploaders: Sylvestre Ledru <sylvestre@debian.org>,
  Matthias Klose <doko@debian.org>,
 Build-Depends: debhelper (>= 11.0), cmake, ninja-build,
     chrpath, texinfo, sharutils, @COMMON_BUILD_DEPS@ @NEXT_LIBLLVM_PKG@
+    quilt [sw64],
     libelf-dev,
     libffi-dev,
     lsb-release, patchutils, diffstat, xz-utils, python3-dev,
